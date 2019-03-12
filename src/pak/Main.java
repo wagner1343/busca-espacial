@@ -2,97 +2,101 @@ package pak;
 
 import javafx.util.Pair;
 
-import java.util.ArrayList;
-import java.util.Stack;
+import java.sql.SQLOutput;
+import java.util.*;
 
 public class Main {
     static String estadoFinal = "000000000000123456";
-    static String caminho = "";
 
 
     public static void main(String[] args) {
         ArrayList<String> estadosPassados = new ArrayList<>();
+
+        ArrayList<Integer> numerosEmbaralhados = new ArrayList<>(6);
+        for(int x = 0; x < 6; x++)
+            numerosEmbaralhados.add(x);
+        Collections.shuffle(numerosEmbaralhados);
+
         Stack<Character>[] pilhas = new Stack[3];
-        for(int x = 0; x < 3; x++){
+        for(int x = 0; x < 3; x++)
             pilhas[x] = new Stack<>();
-        }
-        for(int x = 0; x < 6; x++){
-            pilhas[0].push((char) ('0' + x + 1));
-        }
 
-        for(int x = 0; x < 6; x++){
-            //pilhas[1].push('0');
+        int s = numerosEmbaralhados.size();
+        for(int x = 0; x < s; x++){
+            pilhas[0].push((char) ('0' + numerosEmbaralhados.get(x) + 1));
         }
-
-        for(int x = 0; x < 6; x++){
-            //pilhas[2].push('0');
-        }
-
-        String altura = " | ";
 
         Stack<String> caminho = new Stack<>();
-
         boolean found = false;
 
-        for(int x = 0; x < 3 && !found; x++){
-            for(int y = 0; y < 3 && !found; y++){
-                if(x != y){
-                    System.out.println(altura + "movendo de " + x + " para " + y);
-                    if(busca(estadosPassados, pilhas, x, y, altura, caminho) == 1){
-                        found = true;
-                    }
-                }
-            }
-        }
+        System.out.println("Estado inicial: " + dividirEstado(getEstado(pilhas)));
 
-        while(!caminho.empty()){
-            System.out.println(caminho.pop());
-        }
-    }
+        try {
+            for (int x = 0; x < 3 && !found; x++) {
+                for (int y = 0; y < 3 && !found; y++) {
+                    if (x != y) {
+                        if (busca(estadosPassados, pilhas, x, y, caminho, estadoFinal) == 1) {
 
-    public static int busca(ArrayList<String> estadosPassados, Stack<Character>[] pilhas, int fonte, int destino, String altura, Stack<String> caminho){
-        altura = altura.concat(" | ");
-        System.out.println(altura + "Main.busca");
-        System.out.println(altura + "fonte = [" + fonte + "], destino = [" + destino + "]" + " estado = [" + getEstado(pilhas) + "]");
-
-        if(pilhas[fonte].empty() ) {
-            System.out.println(altura + "Pilha fonte " + fonte + " vazia");
-            return 0;
-        }
-
-        //System.out.println(altura + "pilhas[fonte].peek() = " + pilhas[fonte].peek()
-          //      + " Pilhas[destino].peek() = " + (pilhas[destino].empty() ? "0" : pilhas[destino].peek()));
-
-        pilhas[destino].push(pilhas[fonte].pop());
-        String novoEstado = getEstado(pilhas);
-        System.out.println(altura + "novoEstado = " + novoEstado);
-        if(novoEstado.equals(estadoFinal)){
-            System.out.println(altura + "Estado final achado");
-            return 1;
-        } else {
-            if(estadosPassados.contains(novoEstado)){
-                System.out.println(altura + "Estado ja percorrido");
-                pilhas[fonte].push(pilhas[destino].pop());
-                return 0;
-            }
-
-            estadosPassados.add(novoEstado);
-            for(int x = 0; x < 3; x++){
-                for(int y = 0; y < 3; y++){
-                    if(x != y){
-                        System.out.println(altura + "movendo de " + x + " para " + y);
-                        if(busca(estadosPassados, pilhas, x, y, altura, caminho) == 1){
-                            caminho.push(x + " - " + y);
-                            return 1;
+                            found = true;
                         }
                     }
                 }
             }
-
-            pilhas[fonte].push(pilhas[destino].pop());
-            return 0;
+        } catch (StackOverflowError error){
+            error.printStackTrace();
+            System.out.println("StackOverflow: Aumente o tamanho da stack usando -Xss1024m como argumento pro java");
         }
 
+        int passos = caminho.size();
+        while(!caminho.empty()){
+            System.out.println(caminho.pop());
+        }
+
+        System.out.println("Número de passos: " + passos);
+    }
+
+
+
+    public static int busca(ArrayList<String> estadosPassados, Stack<Character>[] pilhas, int fonte, int destino, Stack<String> caminho, String objetivo){
+        // Condição: A pilha fonte não pode estar vazia
+        if(pilhas[fonte].empty())
+            return 0;
+
+        pilhas[destino].push(pilhas[fonte].pop());
+        String novoEstado = getEstado(pilhas);
+
+        // Condição: Se atingir o objetivo retornar empilhando o caminho
+        if(novoEstado.equals(objetivo))
+            return 1;
+
+        // Condição: Não avaliar estados previamente avaliados
+        if(estadosPassados.contains(novoEstado)){
+            pilhas[fonte].push(pilhas[destino].pop());
+            return 0;
+        } else {
+            estadosPassados.add(novoEstado);
+        }
+
+
+        // Avaliar todas combinações possiveis de jogadas
+        for(int x = 0; x < 3; x++) {
+            for (int y = 0; y < 3; y++)
+                if (x != y)
+                    if (busca(estadosPassados, pilhas, x, y, caminho, objetivo) == 1) {
+                        caminho.push(x + " - " + y + ", " + dividirEstado(novoEstado));
+                        return 1;
+                    }
+        }
+
+        pilhas[fonte].push(pilhas[destino].pop());
+        return 0;
+
+    }
+
+    public static String dividirEstado(String estado){
+        return estado.substring(0, 6) + " "
+                + estado.substring(6, 12) + " "
+                + estado.substring(12, 18);
     }
 
     public static String getEstado(Stack<Character>[] pilhas){
